@@ -1,0 +1,433 @@
+openapi: 3.0.3
+info:
+  title: LetsMeet Server API
+  version: 1.0.0
+  description: |
+    Production-oriented video conferencing backend.
+    Media (audio/video) is transported by LiveKit SFU — never via Express or Socket.IO.
+  contact:
+    name: LetsMeet
+servers:
+  - url: http://localhost:3000
+    description: Local development
+tags:
+  - name: Health
+  - name: Auth
+  - name: Users
+  - name: Meetings
+  - name: LiveKit
+  - name: Recordings
+  - name: Notifications
+  - name: Admin
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Error:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            details: {}
+        requestId:
+          type: string
+    AuthTokens:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        expiresIn:
+          type: integer
+        tokenType:
+          type: string
+          example: Bearer
+        user:
+          $ref: '#/components/schemas/User'
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        status:
+          type: string
+        globalRole:
+          type: string
+        profile:
+          type: object
+    Meeting:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+          example: abc-defg-hij
+        title:
+          type: string
+        status:
+          type: string
+        hasPassword:
+          type: boolean
+        livekitRoomName:
+          type: string
+          nullable: true
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Full health check
+      responses:
+        '200':
+          description: Healthy
+        '503':
+          description: Degraded
+  /api/v1/auth/register:
+    post:
+      tags: [Auth]
+      summary: Register a user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password, displayName]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 8
+                displayName:
+                  type: string
+      responses:
+        '201':
+          description: Registered
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/AuthTokens'
+        '409':
+          description: Email taken
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/auth/login:
+    post:
+      tags: [Auth]
+      summary: Login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Authenticated
+  /api/v1/auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Rotate refresh token
+      responses:
+        '200':
+          description: New token pair
+  /api/v1/auth/logout:
+    post:
+      tags: [Auth]
+      summary: Logout / revoke refresh token
+      responses:
+        '200':
+          description: Logged out
+  /api/v1/users/me:
+    get:
+      tags: [Users]
+      security: [{ bearerAuth: [] }]
+      summary: Current user profile
+      responses:
+        '200':
+          description: Profile
+    patch:
+      tags: [Users]
+      security: [{ bearerAuth: [] }]
+      summary: Update current user profile/settings
+      responses:
+        '200':
+          description: Updated
+  /api/v1/meetings:
+    get:
+      tags: [Meetings]
+      security: [{ bearerAuth: [] }]
+      summary: List meetings for current user
+      responses:
+        '200':
+          description: Meeting list
+    post:
+      tags: [Meetings]
+      security: [{ bearerAuth: [] }]
+      summary: Create a meeting
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title]
+              properties:
+                title:
+                  type: string
+                password:
+                  type: string
+                waitingRoomEnabled:
+                  type: boolean
+                visibility:
+                  type: string
+                  enum: [PUBLIC, PRIVATE]
+      responses:
+        '201':
+          description: Created
+  /api/v1/meetings/join:
+    post:
+      tags: [Meetings]
+      security: [{ bearerAuth: [] }]
+      summary: Join by meeting code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Joined or waiting
+  /api/v1/meetings/{id}/join:
+    post:
+      tags: [Meetings]
+      security: [{ bearerAuth: [] }]
+      summary: Join meeting by id
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Joined or waiting
+  /api/v1/meetings/{id}/end:
+    post:
+      tags: [Meetings]
+      security: [{ bearerAuth: [] }]
+      summary: End meeting (host)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Ended
+  /api/v1/livekit/token:
+    post:
+      tags: [LiveKit]
+      security: [{ bearerAuth: [] }]
+      summary: Issue LiveKit media access token
+      description: Only JOINED participants. Media transport is LiveKit, not Socket.IO.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [meetingId]
+              properties:
+                meetingId:
+                  type: string
+                  format: uuid
+      responses:
+        '200':
+          description: Token + client URL
+  /api/v1/webhooks/livekit:
+    post:
+      tags: [LiveKit]
+      summary: LiveKit webhook receiver
+      description: Verifies LiveKit signature. Used for participant/room/egress sync.
+      responses:
+        '200':
+          description: Accepted
+  /api/v1/meetings/{id}/recordings/start:
+    post:
+      tags: [Recordings]
+      security: [{ bearerAuth: [] }]
+      summary: Start LiveKit egress recording to Azure Blob Storage
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '201':
+          description: Recording started
+  /api/v1/meetings/{id}/recordings/stop:
+    post:
+      tags: [Recordings]
+      security: [{ bearerAuth: [] }]
+      summary: Stop active recording
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Stopping
+  /api/v1/recordings:
+    get:
+      tags: [Recordings]
+      security: [{ bearerAuth: [] }]
+      summary: List recordings
+      responses:
+        '200':
+          description: Recordings
+  /api/v1/recordings/{id}/download:
+    get:
+      tags: [Recordings]
+      security: [{ bearerAuth: [] }]
+      summary: Temporary signed download URL
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Signed URL
+  /api/v1/notifications:
+    get:
+      tags: [Notifications]
+      security: [{ bearerAuth: [] }]
+      summary: List notifications
+      responses:
+        '200':
+          description: Inbox
+  /api/v1/admin/dashboard:
+    get:
+      tags: [Admin]
+      security: [{ bearerAuth: [] }]
+      summary: Admin dashboard stats
+      description: Requires ADMIN or SUPER_ADMIN
+      responses:
+        '200':
+          description: Dashboard
+        '403':
+          description: Forbidden
+  /api/v1/admin/users:
+    get:
+      tags: [Admin]
+      security: [{ bearerAuth: [] }]
+      summary: List users
+      responses:
+        '200':
+          description: Users
+  /api/v1/admin/users/{id}/suspend:
+    post:
+      tags: [Admin]
+      security: [{ bearerAuth: [] }]
+      summary: Suspend a user
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Suspended
+  /api/v1/admin/meetings:
+    get:
+      tags: [Admin]
+      security: [{ bearerAuth: [] }]
+      summary: Monitor meetings
+      responses:
+        '200':
+          description: Meetings
+  /api/v1/admin/meetings/{id}/end:
+    post:
+      tags: [Admin]
+      security: [{ bearerAuth: [] }]
+      summary: Force-end a meeting
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Ended
+  /api/v1/admin/audit-logs:
+    get:
+      tags: [Admin]
+      security: [{ bearerAuth: [] }]
+      summary: Audit trail
+      responses:
+        '200':
+          description: Audit logs
+  /api/v1/admin/system/health:
+    get:
+      tags: [Admin]
+      security: [{ bearerAuth: [] }]
+      summary: Detailed system health
+      responses:
+        '200':
+          description: Healthy
+        '503':
+          description: Degraded
