@@ -1,0 +1,61 @@
+{
+  "name": "letsmeet-server",
+  "version": "1.0.0",
+  "description": "Scalable video conferencing backend (LetsMeet)",
+  "main": "src/server.js",
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:migrate:deploy": "prisma migrate deploy",
+    "db:studio": "prisma studio",
+    "db:push": "prisma db push",
+    "verify:phase1": "bash scripts/phase1-verify.sh",
+    "admin:create": "node scripts/create-admin.mjs",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "keywords": [
+    "webrtc",
+    "livekit",
+    "video-conferencing",
+    "express"
+  ],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@azure/storage-blob": "^12.34.0",
+    "@prisma/client": "^6.19.3",
+    "@socket.io/redis-adapter": "^8.3.0",
+    "argon2": "^0.45.2",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "^5.3.0",
+    "express-rate-limit": "^7.5.1",
+    "helmet": "^8.1.0",
+    "ioredis": "^5.8.2",
+    "jsonwebtoken": "^9.0.3",
+    "livekit-server-sdk": "^2.20.1",
+    "nodemailer": "^10.6.1",
+    "pino": "^9.14.0",
+    "pino-http": "^10.5.0",
+    "socket.io": "^4.8.4",
+    "swagger-ui-express": "^5.0.1",
+    "yaml": "^2.9.1",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "pino-pretty": "^13.2.0",
+    "prisma": "^6.19.3",
+    "socket.io-client": "^4.8.4",
+    "supertest": "^7.3.2",
+    "vitest": "^5.1.1"
+  }
+}
