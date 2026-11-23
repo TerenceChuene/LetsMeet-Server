@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Prisma
+prisma/*.db
+prisma/*.db-journal
+
+# Coverage / test
+coverage/
+.nyc_output/
+
+# Build / cache
+dist/
+build/
+.cache/
+.tmp/
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Docker volumes (local)
+docker/data/
+
+# Uploads / temp
+uploads/
+tmp/
